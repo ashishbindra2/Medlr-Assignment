@@ -3,6 +3,7 @@ bs4==0.0.2
 requests==2.32.3
 beautifulsoup4==4.12.3
 pydantic-settings==2.7.1
+lxml==5.2.2
 motor==3.6.1
 validators==0.34.0
 prometheus-client==0.21.1

@@ -28,11 +28,17 @@
      python app.py
      ```
 4. Access the APIs via `http://localhost:8000/docs`.
-
+5. Access the documentation `http://127.0.0.1:8000/redoc`
 ---
 
 ## Screenshots
-> Add relevant screenshots here.
+![img_1.png](img_1.png)
+![img_2.png](img_2.png)
+![img_3.png](img_3.png)
+![img_4.png](img_4.png)
+![img_5.png](img_5.png)
+![img_6.png](img_6.png)
+![img_7.png](img_7.png)
 
 ## Objective
 The purpose of this project is to implement a high-performance CRUD API in Go, Python, or both. The API will handle the following functionalities:

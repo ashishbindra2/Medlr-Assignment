@@ -1,3 +1,4 @@
+
 services:
   app:
     build: .
@@ -31,6 +32,22 @@ services:
       - monitoring
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - monitoring
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=adminpassword
+
+volumes:
+  mongodb_data:
 
 networks:
   monitoring:
