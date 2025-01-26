@@ -1,10 +1,11 @@
 import json
+from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
 from fastapi import HTTPException
 
-from app.db import add_urls_to_medicine
+from app.db import add_urls_to_medicine, mongo
 from app.utils.logger import logger
 
 # class_path = "style__inner-container___3BZU9 style__product-grid___3noQW style__padding-top-bottom-12px___1-DPF"
@@ -124,3 +125,38 @@ async def add_urls():
     except Exception as e:
         logger.error(f"Error occurred while adding URLs: {e}")
         return {"status": "failure", "error": str(e)}
+
+
+async def scap_medicine():
+
+    try:
+        # Retrieve a list of URLs to scrape
+        urls = mongo.get_medicine_details(2)  # Retrieve all documents from the collection
+        scraped_data_list = []
+
+        # Iterate through the documents
+        async for url_doc in urls:
+            url = url_doc.get("url")  # Safely get the "url" field
+            logger.info(f"Starting to scrape URL: {url}")
+
+            data_scraped = get_medicine_detail_scrap(url)
+            async for data in data_scraped:
+                # Simulate scraping (replace with real implementation)
+                scraped_data = {
+                    "medicine_name": data.get('medicine_name', ''),
+                    "retail_price": data.get('retail_price', 0),
+                    "discounted_price": data.get('discounted_price', 0),
+                    "scraped_at": datetime.now().isoformat()
+                }
+                mongo.update_medicine_details(url, scraped_data)
+                scraped_data.update({"url": url})
+                scraped_data_list.append(scraped_data)
+            logger.info(f"Finished scraping URL: {url}")
+        logger.info(f"Scheduled scraping task completed successfully. Total items scraped: {len(scraped_data_list)}")
+        return {"data": scraped_data_list}
+    except TypeError as te:
+        logger.error("TypeError occurred during scraping process: %s", str(te))
+        raise HTTPException(status_code=500, detail="An error occurred while processing the data.")
+    except Exception as e:
+        logger.critical(f"Unexpected error occurred during scheduled scraping: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while scraping medicine details.")

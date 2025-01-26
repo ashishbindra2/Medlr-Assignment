@@ -8,14 +8,15 @@ from app.config import settings
 from app.utils.logger import logger
 from app.utils.metrics import record_metrics
 from app.utils.model import JSONDataRequest
-from app.scrap import get_medicine_detail_scrap
+from app.scrap import get_medicine_detail_scrap, scap_medicine
 from app.db import mongo, insert_document, fetch_user
 
 from fastapi import FastAPI, Request, Form, UploadFile, HTTPException
-from fastapi.responses import FileResponse,Response
+from fastapi.responses import FileResponse, Response
 
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI(
@@ -29,6 +30,7 @@ app = FastAPI(
         "email": "ashishbindra2@gmail.com",
     }
 )
+scheduler = AsyncIOScheduler()
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
@@ -46,6 +48,8 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(MetricsMiddleware)
+
+
 # logger = structlog.get_logger()
 # Instrumentator().instrument(app).expose(app)
 
@@ -190,7 +194,7 @@ async def api_retrieve_image(uuid: str, filename: str):
 
 
 @app.get("/get-data/")
-async def adp_get_data(user_id: str):
+async def api_get_data(user_id: str):
     """
        Retrieve user data by user ID.
 
@@ -202,19 +206,19 @@ async def adp_get_data(user_id: str):
        Returns:
            dict: A response indicating the success or failure of the data retrieval
     """
-    logger.info(f"Received request to fetch user data for user_id: {user_id}" )
+    logger.info(f"Received request to fetch user data for user_id: {user_id}")
     try:
 
         user_data = await fetch_user({"user_id": user_id})
 
         if not user_data:
-            logger.warning(f"No user data found for user_id: {user_id}" )
+            logger.warning(f"No user data found for user_id: {user_id}")
 
             return {
                 "status": "error",
                 "message": "User data not found"
             }
-        logger.info(f"Successfully retrieved user data for user_id: {user_id}" )
+        logger.info(f"Successfully retrieved user data for user_id: {user_id}")
 
         return {
             "status": "success",
@@ -222,12 +226,12 @@ async def adp_get_data(user_id: str):
         }
     except Exception as e:
         logger.critical(f"An error occurred while retrieving user data for user_id: {user_id}. Error: {str(e)}",
-                exc_info=True)
+                        exc_info=True)
         raise HTTPException(status_code=500, detail="An error occurred while retrieving user data.")
 
 
 @app.get("/run-scheduled-scraping")
-async def adi_run_scheduled_scraping():
+async def api_run_scheduled_scraping():
     """
     Scheduled task to scrape and update medicine details in the database.
 
@@ -239,37 +243,8 @@ async def adi_run_scheduled_scraping():
     """
     logger.info("Scheduled scraping task started.")
 
-    try:
-        # Retrieve a list of URLs to scrape
-        urls = mongo.get_medicine_details(20)  # Retrieve all documents from the collection
-        scraped_data_list = []
-
-        # Iterate through the documents
-        async for url_doc in urls:
-            url = url_doc.get("url")  # Safely get the "url" field
-            logger.info(f"Starting to scrape URL: {url}")
-
-            data_scraped = get_medicine_detail_scrap(url)
-            async for data in data_scraped:
-                # Simulate scraping (replace with real implementation)
-                scraped_data = {
-                    "medicine_name": data.get('medicine_name', ''),
-                    "retail_price": data.get('retail_price', 0),
-                    "discounted_price": data.get('discounted_price', 0),
-                    "scraped_at": datetime.now().isoformat()
-                }
-                await mongo.update_medicine_details(url,scraped_data)
-                scraped_data.update({"url": url})
-                scraped_data_list.append(scraped_data)
-            logger.info(f"Finished scraping URL: {url}")
-        logger.info(f"Scheduled scraping task completed successfully. Total items scraped: {len(scraped_data_list)}")
-        return {"data": scraped_data_list}
-    except TypeError as te:
-        logger.error("TypeError occurred during scraping process: %s", str(te))
-        raise HTTPException(status_code=500, detail="An error occurred while processing the data.")
-    except Exception as e:
-        logger.critical(f"Unexpected error occurred during scheduled scraping: {str(e)}",exc_info=True)
-        raise HTTPException(status_code=500, detail="An unexpected error occurred while scraping medicine details.")
+    response = await scap_medicine()
+    return response
 
 
 @app.get("/metrics")
@@ -309,4 +284,25 @@ async def users():
     """
     cursor = await mongo.fetch_users()
     print(cursor)
+    print(datetime.now())
     return {"users list": cursor}
+
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+
+        logger.info("Task scheduled to run every day at 6:00 PM.")
+        scheduler.add_job(api_run_scheduled_scraping, CronTrigger(second='*/10'), id="daily scrap")
+        scheduler.start()
+    except Exception as e:
+        logger.error(f"Error during startup: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to start scheduler")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    scheduler.shutdown()
+    logger.info("Scheduler has been shut down.")
+
+

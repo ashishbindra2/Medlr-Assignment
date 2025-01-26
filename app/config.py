@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    upload_path:str
+    upload_path: str
     db_name: str
     mongo_url: str
     scraping_schedule: str = "0 0 * * *"

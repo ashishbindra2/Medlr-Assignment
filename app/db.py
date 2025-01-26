@@ -39,7 +39,7 @@ class MongoDB:
             users.append(user)
         return users
 
-    async def update_medicine_details(self, url: str, scraped_data: dict):
+    def update_medicine_details(self, url: str, scraped_data: dict):
         """
         Updates or inserts medicine details based on the URL.
         Args:
@@ -48,7 +48,7 @@ class MongoDB:
         Returns:
             result: The result of the update operation.
         """
-        result = await self.medicine_collection.update_one(
+        result = self.medicine_collection.update_one(
             {"url": url},  # Ensure idempotence using URL as a unique key
             {"$set": scraped_data},
             upsert=True  # Insert a new or update existing document

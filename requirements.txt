@@ -1,8 +1,13 @@
-fastapi[standard]
+fastapi==0.115.7
+starlette==0.45.3
+
 bs4==0.0.2
 requests==2.32.3
 beautifulsoup4==4.12.3
 pydantic-settings==2.7.1
+pydantic==2.10.6
+pydantic-core==2.27.2
+
 lxml==5.2.2
 motor==3.6.1
 validators==0.34.0
@@ -11,4 +16,7 @@ structlog==25.1.0
 pytest==8.3.4
 pytest-asyncio==0.25.2
 uvicorn==0.34.0
-python-multipart
+python-multipart==0.0.20
+
+apscheduler==3.11.0
+tzlocal==5.2
