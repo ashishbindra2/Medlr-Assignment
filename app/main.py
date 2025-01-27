@@ -283,8 +283,6 @@ async def users():
     :return:
     """
     cursor = await mongo.fetch_users()
-    print(cursor)
-    print(datetime.now())
     return {"users list": cursor}
 
 
@@ -293,7 +291,7 @@ async def startup_event():
     try:
 
         logger.info("Task scheduled to run every day at 6:00 PM.")
-        scheduler.add_job(api_run_scheduled_scraping, CronTrigger(second='*/10'), id="daily scrap")
+        scheduler.add_job(api_run_scheduled_scraping, CronTrigger(hour=18,second=10), id="daily scrap")
         scheduler.start()
     except Exception as e:
         logger.error(f"Error during startup: {str(e)}")

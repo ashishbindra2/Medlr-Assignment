@@ -1,3 +1,5 @@
+import os
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import settings
 from app.utils.logger import logger
@@ -10,7 +12,7 @@ class MongoDB:
 
     def __init__(self):
         # Establish connection with MongoDB using Motor
-        self.client = AsyncIOMotorClient(settings.mongo_url)
+        self.client = AsyncIOMotorClient( os.environ.get("MONGO_URI", settings.mongo_url))
         self.db = self.client[settings.db_name]
         self.medicine_collection = self.db["medicine_urls"]
         self.users = self.db['users']
